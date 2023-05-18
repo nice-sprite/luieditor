@@ -156,53 +156,85 @@ namespace assets
         return db->engine_images / path;
     }
 
-    // can have this return the AssetID of the seleceted asset so 
-    // calling code can know about images 
-    void editor_draw_browser(AssetDB* db)
+    // In the browser we display materials(shaders), images, etc
+    // if the user selects something, the ID of the asset(s) they selected is returned
+    BrowserInteraction editor_draw_browser(AssetDB* db)
     {
+        BrowserInteraction interact{};
         static bool good;
         static Texture2D test = create_texture(load_image(builtin_image(db, "spr_bw_350_f.png")), db->device, &good);
-        std::lock_guard lock{db->mut};
-        ImGuiStyle& style = ImGui::GetStyle();
-        ImVec2 thumbnail_size(64, 64);
-
-        float window_vis_x2 = ImGui::GetWindowPos().x + ImGui::GetWindowContentRegionMax().x;
-        for(auto& [parent_dir, ids] : db->browser_info)
+        if(ImGui::Begin("Browser"))
         {
-            if(ImGui::CollapsingHeader(parent_dir.string().c_str(), ImGuiTreeNodeFlags_DefaultOpen))
+            if(ImGui::Button("Add Asset Folder")) 
             {
-                int item_count = 0;
-                int total = ids.size();
-                for(AssetID id : ids)
+                ifd::FileDialog::Instance().Open( "filedialog", "Select folder", "", true);
+            }
+
+            if (ifd::FileDialog::Instance().IsDone("filedialog"))
+            {
+                if(ifd::FileDialog::Instance().HasResult())
                 {
-                    Asset& asset = db->assets[id];
-                    if(asset.type == AssetType::ImageTexture)
+                    std::vector<fsapi::Path> asset_directories = 
+                        ifd::FileDialog::Instance().GetResults();
+
+                    for(fsapi::Path& dir : asset_directories)
                     {
-                        ImGui::BeginGroup();
-                        ImGui::ImageButton(ImTextureID(asset.texture.srv), thumbnail_size);
-                        ImGui::PushTextWrapPos(ImGui::GetItemRectMax().x - ImGui::GetWindowPos().x);
-                        ImGui::Text("%s", asset.name.c_str());
-                        ImGui::PopTextWrapPos();
-                        ImGui::EndGroup();
-                        //ImGui::Button("Hi", thumbnail_size);
-                        float last_btn_x2 = ImGui::GetItemRectMax().x;
-                        float next_btn_x2 = last_btn_x2 + style.ItemSpacing.x + thumbnail_size.x;
-                        if(item_count +1 < total && next_btn_x2 < window_vis_x2) {
-                            ImGui::SameLine();
+                        db->job_queue->enqueue(AssetJob {
+                                    .type = DIRECTORY_LOAD, 
+                                    .path = dir
+                                });
+                    }
+                }
+                ifd::FileDialog::Instance().Close();
+            }
+            
+            std::lock_guard lock{db->mut};
+            ImGuiStyle& style = ImGui::GetStyle();
+            ImVec2 thumbnail_size(64, 64);
+
+            float window_vis_x2 = ImGui::GetWindowPos().x + ImGui::GetWindowContentRegionMax().x;
+            for(auto& [parent_dir, ids] : db->browser_info)
+            {
+                if(ImGui::CollapsingHeader(parent_dir.string().c_str(), ImGuiTreeNodeFlags_DefaultOpen))
+                {
+                    int item_count = 0;
+                    int total = ids.size();
+                    for(AssetID id : ids)
+                    {
+                        Asset& asset = db->assets[id];
+                        if(asset.type == AssetType::ImageTexture)
+                        {
+                            ImGui::BeginGroup();
+                            if(ImGui::ImageButton(ImTextureID(asset.texture.srv), thumbnail_size))
+                            {
+                                LOG_INFO("oh my gahh u pressed me {}", (u64)id );
+                                interact.selected_asset = id;
+                            }
+                            ImGui::PushTextWrapPos(ImGui::GetItemRectMax().x - ImGui::GetWindowPos().x);
+                            ImGui::Text("%s", asset.name.c_str());
+                            ImGui::PopTextWrapPos();
+                            ImGui::EndGroup();
+                            //ImGui::Button("Hi", thumbnail_size);
+                            float last_btn_x2 = ImGui::GetItemRectMax().x;
+                            float next_btn_x2 = last_btn_x2 + style.ItemSpacing.x + thumbnail_size.x;
+                            if(item_count +1 < total && next_btn_x2 < window_vis_x2) {
+                                ImGui::SameLine();
+                            }
+                            ++item_count;
                         }
-                        ++item_count;
                     }
                 }
             }
         }
+        ImGui::End();
+        return interact;
     }
+
     void editor_image_picker(AssetDB* db)
     {
         if(ImGui::Begin("Image picker"))
         {
             ImGui::Checkbox("Show Filename", &db->show_text);
-
-
             if(ImGui::Button("Attach to asset directory"))
             {
                 ifd::FileDialog::Instance().Open( "filedialog", "Select Asset Directory", "", true);

@@ -205,7 +205,7 @@ void app_handle_window_create(AppState* app,
                 .scroll_step_normal = 25.0,
                 .scroll_step_fast = 50.0,
             },
-            glm::vec3(scene_calculate_root_center(&app->scene), -800)
+            glm::vec3(scene_calculate_root_center(&app->scene), 800)
     );
 
     app->debug_gfx = new DebugRenderSystem();
@@ -250,6 +250,7 @@ void app_resize(AppState* app, i32 w, i32 h)
 
 void editor_main_ui(AppState* app) 
 {
+    assets::AssetDB* db = app->asset_db;
     static b8 a = true;
     ImGui::ShowDemoWindow(&a);
     //editor_scene_display(&app->scene);
@@ -257,7 +258,22 @@ void editor_main_ui(AppState* app)
     editor_camera_controls(&app->camera_system);
     input_debug_ui(&app->input_system);
 
-    assets::editor_image_picker(app->asset_db);
+    //assets::editor_image_picker(db);
+    assets::BrowserInteraction browser_interact = assets::editor_draw_browser(db);
+
+    // 0 means nothing was selected
+    if(browser_interact.selected_asset != 0)
+    {
+        if(app->scene.tree_state.selected_element)
+        {
+            ui::UIElement* element = app->scene.tree_state.selected_element;
+            LOG_INFO("assigned element {} with asset {}", 
+                    element->name,
+                    db->assets[browser_interact.selected_asset].name.c_str());
+            element->asset_id = browser_interact.selected_asset;
+        }
+    }
+
 
     if(ImGui::Begin("Fonts")) 
     {
@@ -437,7 +453,7 @@ void scene_render(ui::SceneDef* active_scene,
 
             }
             // bind the texture
-            gfx_texture_bind(gfx, &test);
+            //gfx_texture_bind(gfx, &test);
         }
 
         vout[i * 4 + 0] = uielement_to_vertex(box.left, box.top,    (f32)elem->priority, elem->color, 0.0, 0.0);

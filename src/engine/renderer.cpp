@@ -94,7 +94,8 @@ GfxState* gfx_start(void* window, i32 width, i32 height)
     LOG_INFO("creating blend states");
     D3D11_RASTERIZER_DESC rasterDesc{};
     rasterDesc.AntialiasedLineEnable = true;
-    rasterDesc.CullMode = D3D11_CULL_BACK;
+   // rasterDesc.CullMode = D3D11_CULL_BACK;
+    rasterDesc.CullMode = D3D11_CULL_NONE;
     rasterDesc.DepthBias = 0;
     rasterDesc.DepthBiasClamp = 0.0f;
     // NOTE(nice_sprite): this is a lazy fix for a issue that came up when switching to GLM.

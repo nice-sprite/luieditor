@@ -100,7 +100,15 @@ namespace assets
         std::mutex mut;
     };
 
+    struct BrowserInteraction
+    {
+        AssetID selected_asset;
+
+    };
+
     AssetDB* db_init(struct ID3D11Device* device);
+
+
 
 
     // maybe this belongs somewhere else
@@ -113,6 +121,7 @@ namespace assets
     RawImage load_image(const fsapi::Path& filename);
 
     void editor_image_picker(AssetDB* db);
+    BrowserInteraction editor_draw_browser(AssetDB* db);
 
     b8 extension_filter(struct std::filesystem::directory_entry const& dirent);
 

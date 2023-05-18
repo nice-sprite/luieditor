@@ -217,12 +217,13 @@ namespace ui
         if(UIElement* elem = alloc_element(scene))
         {
             *elem = UIElement {
-                .type = UIElementType::Element,
                 .parent = 0,
                 .previous_sibling = 0,
                 .next_sibling = 0,
                 .first_child = 0,
                 .last_child = 0,
+                .type = UIElementType::Element,
+                .asset_id = 0,
                 .name = name,
                 .box = UIElementBoundingBox {
                     .left = left, 

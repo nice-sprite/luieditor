@@ -70,8 +70,8 @@ void camera_flycam(CameraSystem* cam_sys, InputSystem* input, f64 time_delta)
 {
     if(input->viewport_focused)
     {
-        const glm::vec4 basis_forward = {0, 0, 1, 0};
-        const glm::vec4 basis_up      = {0, 1, 0, 0};
+        const glm::vec4 basis_forward = {0, 0, -1, 0};
+        const glm::vec4 basis_up      = {0, -1, 0, 0};
         const glm::vec4 basis_right   = {1, 0, 0, 0};
 
         Camera* camera = camsys_get_active(cam_sys);
@@ -90,12 +90,12 @@ void camera_flycam(CameraSystem* cam_sys, InputSystem* input, f64 time_delta)
 
             if (input_down(input, Btn_W)) 
             {
-                camera_offset += glm::vec4(0.0, 0.0, 1.0, 0.0);
+                camera_offset += glm::vec4(0.0, 0.0, -1.0, 0.0);
             }
 
             if (input_down(input, Btn_S)) 
             {
-                camera_offset += glm::vec4(0.0, 0.0, -1.0, 0.0);
+                camera_offset += glm::vec4(0.0, 0.0, 1.0, 0.0);
             }
 
             if (input_down(input, Btn_A)) 
@@ -126,11 +126,11 @@ void camera_flycam(CameraSystem* cam_sys, InputSystem* input, f64 time_delta)
 
         if (input_down(input, Btn_E))
         { 
-            camera->origin += (f32)time_delta * movement_speed * glm::vec4(0.0, 1.0, 0.0, 0.0);
+            camera->origin -= (f32)time_delta * movement_speed * glm::vec4(0.0, 1.0, 0.0, 0.0);
         }
         if (input_down(input, Btn_Q))
         { 
-            camera->origin += (f32)time_delta * movement_speed * glm::vec4(0.0, -1.0, 0.0, 0.0);
+            camera->origin += (f32)time_delta * movement_speed * glm::vec4(0.0, 1.0, 0.0, 0.0);
         }
 
         rotation = glm::rotate(rotation, camera->yaw, basis_up.xyz());
@@ -230,10 +230,10 @@ Camera camera_create(glm::vec3 origin, f32 fov_in_degrees, glm::vec2 view_dimens
 {
     Camera cam{};
     cam.origin =    glm::vec4(origin, 0);
-    cam.forward =   glm::vec4(0, 0, 1, 0); // forward is +z axis
-    cam.up =        glm::vec4(0, 1, 0, 0); // up is +y
+    cam.forward =   glm::vec4(0, 0, -1, 0); // forward is +z axis
+    cam.up =        glm::vec4(0, -1, 0, 0); // up is -y, like screen
     cam.right =     glm::vec4(1, 0, 0, 0); // right is +x
-    cam.view_matrix = glm::lookAt(cam.origin.xyz(), glm::vec3(0, 0, 0), glm::vec3(0, 1, 0));
+    cam.view_matrix = glm::lookAt(cam.origin.xyz(), glm::vec3(0, 0, 0), cam.up.xyz());
     cam.pitch = 0.0;
     cam.roll = 0.0;
     cam.yaw = 0.0;

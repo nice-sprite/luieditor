@@ -27,9 +27,9 @@ namespace fsapi
     {
         HANDLE file_handle;
         DWORD read_bytes; 
-        FileReadResult result{};
         OVERLAPPED ol{0};
         LARGE_INTEGER file_size;
+        FileReadResult result{};
 
         file_handle = CreateFileA(path, 
                 GENERIC_READ,
@@ -40,34 +40,28 @@ namespace fsapi
                 0);
 
         GetFileSizeEx(file_handle, &file_size);
-        result.file_size_bytes = file_size.QuadPart;
 
         /* allocate the memory */ 
-        result.buffer = engine_alloc("read_entire_file", result.file_size_bytes, MEM_COMMIT|MEM_RESERVE, PAGE_READWRITE);
-        //result.buffer = VirtualAlloc(0, result.file_size_bytes, MEM_COMMIT|MEM_RESERVE, PAGE_READWRITE);
-        result.file_size_bytes = file_size.QuadPart;
-        if( (FALSE == ReadFile(file_handle, result.buffer, result.file_size_bytes, &read_bytes, &ol)) && 
-                (GetLastError() == ERROR_IO_PENDING))
+        void* buffer = engine_alloc("fileio", result.file_size_bytes, MEM_COMMIT|MEM_RESERVE, PAGE_READWRITE);
+        if( (FALSE == ReadFile(file_handle, buffer, file_size.QuadPart, &read_bytes, &ol)) && (GetLastError() == ERROR_IO_PENDING))
         {
             DWORD overlapped_bytes_completed;
-            if(GetOverlappedResult(file_handle, &ol, &overlapped_bytes_completed, true))
+            if(GetOverlappedResult(file_handle, &ol, &overlapped_bytes_completed, true) && overlapped_bytes_completed == result.file_size_bytes)
             {
-                if(overlapped_bytes_completed == result.file_size_bytes)
-                {
-                    return(result);
-                }
+                result.buffer = buffer;
+                result.file_size_bytes = file_size.QuadPart;
             } 
             else
             {
-                LOG_WARNING("GetOverlappedResult didnt do well");
-                return FileReadResult{};
-
+                LOG_WARNING("GetOverlappedResult didnt do well, cleaning memory");
+                engine_free(result.buffer, "fileio");
+                result.buffer = 0;
+                result.file_size_bytes = 0;
             }
         } 
-        else
-        { 
-            return FileReadResult{}; 
-        }
+
+        CloseHandle(file_handle);
+        return result; // caller checks if result.buffer != null
     }
 
     FileReadResult read_entire_file(const Path& path)
@@ -76,6 +70,7 @@ namespace fsapi
         DWORD read_bytes; 
         OVERLAPPED ol{0};
         LARGE_INTEGER file_size;
+        FileReadResult result{};
 
         file_handle = CreateFileW(path.native().c_str(), 
                 GENERIC_READ,
@@ -89,35 +84,25 @@ namespace fsapi
 
         //void* buffer = VirtualAlloc(0, file_size.QuadPart, MEM_COMMIT|MEM_RESERVE, PAGE_READWRITE);
         void* buffer = engine_alloc("fileio", file_size.QuadPart, MEM_COMMIT|MEM_RESERVE, PAGE_READWRITE);
-        if( (FALSE == ReadFile(file_handle, buffer, file_size.QuadPart, &read_bytes, &ol)) && 
-                (GetLastError() == ERROR_IO_PENDING))
+        if( (FALSE == ReadFile(file_handle, buffer, file_size.QuadPart, &read_bytes, &ol)) && (GetLastError() == ERROR_IO_PENDING))
         {
             DWORD overlapped_bytes_completed;
-            if(GetOverlappedResult(file_handle, &ol, &overlapped_bytes_completed, true))
+            if(GetOverlappedResult(file_handle, &ol, &overlapped_bytes_completed, true) && overlapped_bytes_completed == file_size.QuadPart)
             {
-                if(overlapped_bytes_completed == file_size.QuadPart)
-                {
-                    return FileReadResult {
-                        .file_size_bytes = (u64)file_size.QuadPart,
-                        .buffer = buffer,
-                    };
-                }
-                else
-                {
-                    return FileReadResult{}; 
-                }
+                result.file_size_bytes = (u64)file_size.QuadPart;
+                result.buffer = buffer;
             } 
             else
             {
-                LOG_WARNING("GetOverlappedResult didnt do well");
-                return FileReadResult{};
-
+                LOG_WARNING("GetOverlappedResult failed, cleaning memory");
+                engine_free(result.buffer, "fileio");
+                result.buffer = 0; 
             }
         } 
-        else
-        { 
-            return FileReadResult{}; 
-        }
+
+        CloseHandle(file_handle);
+        return result;
+
     }
 
     void free_file(FileReadResult file_result)

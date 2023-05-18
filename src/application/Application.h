@@ -46,7 +46,7 @@ struct AppState
     struct RemoteLUIUpdateSystem* live_game;
     PreframeUpdateFn preframe_fns[32]{}; // can put debug/metric capture shit here, conditional input fns
     Texture2D test_texture;
-    assets::AssetDB asset_db;
+    assets::AssetDB* asset_db;
 };
 
 void app_create(AppState* app, HINSTANCE hinst, std::string appname);
@@ -82,6 +82,7 @@ void scene_run_interaction(ui::SceneDef* scene, InputSystem* input, RayCaster* r
 void scene_render(ui::SceneDef* active_scene, 
         GfxSceneResources* resources,
         GfxState* gfx,
+        assets::AssetDB* assets,
         f32 frame_delta);
 
 /*

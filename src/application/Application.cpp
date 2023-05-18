@@ -6,6 +6,7 @@
 #include <imgui.h>
 #include <winuser.h>
 #include <imgui.h>
+#include <imgui_internal.h>
 #include <imgui_impl_dx11.h>
 #include <imgui_impl_win32.h>
 #include "../engine/imgui_custom.h"
@@ -110,6 +111,7 @@ void app_systems_run(AppState* app, f64 delta_time)
     scene_render(&app->scene,
             &app->scene_render_resources,
             app->gfx,
+            app->asset_db,
             delta_time);
     gfx_pop_render_texture(app->gfx); // unbind 
 
@@ -147,13 +149,13 @@ void app_systems_run(AppState* app, f64 delta_time)
     {
         input_lock_cursor(&app->input_system);
         input_hide_cursor(&app->input_system);
-        LOG_INFO("HIDING");
+        //LOG_INFO("HIDING");
     }
     else
     {
         input_unlock_cursor(&app->input_system);
         input_show_cursor(&app->input_system);
-        LOG_INFO("SHOWING");
+        //LOG_INFO("SHOWING");
     }
 
     editor_main_ui(app);
@@ -216,7 +218,8 @@ void app_handle_window_create(AppState* app,
 
     // create test texture
     bool loaded = 0;
-    app->test_texture = assets::load_texture("w:/priscilla/resource/spr_bw_226.png", app->gfx->device, &loaded);
+    fsapi::Path path = fsapi::exe_dir().parent_path() / "resource/spr_bw_226.png";
+    app->test_texture = assets::create_texture(std::move(assets::load_image(path)), app->gfx->device, &loaded);
     if(loaded)
     {
         LOG_INFO("Texture should be good!");
@@ -224,7 +227,6 @@ void app_handle_window_create(AppState* app,
     else
     {
         LOG_WARNING("TEXTURE NOT GOOD!");
-        __debugbreak();
     }
 
     /* setup imgui */
@@ -255,14 +257,7 @@ void editor_main_ui(AppState* app)
     editor_camera_controls(&app->camera_system);
     input_debug_ui(&app->input_system);
 
-    assets::editor_image_picker(&app->asset_db);
-
-    /* draw debug image */
-    if(ImGui::Begin("test texture loading"))
-    {
-        ImGui::Image((void*)app->test_texture.srv, ImVec2(app->test_texture.width, app->test_texture.height));
-    }
-    ImGui::End();
+    assets::editor_image_picker(app->asset_db);
 
     if(ImGui::Begin("Fonts")) 
     {
@@ -288,7 +283,8 @@ EditorViewpaneData editor_viewpane(const char* title, void* image_srv_for_imgui)
 
     if(ImGui::Begin(title))
     {
-        result.focused = ImGui::IsWindowFocused();
+        //result.focused = ImGui::IsWindowFocused() && !ImGui::IsItemFocused() && !ImGui::IsItemActive(); // the is item focused here refers to the windows titlebar
+
 
         min = ImGui::GetWindowContentRegionMin();
         max = ImGui::GetWindowContentRegionMax();
@@ -305,7 +301,12 @@ EditorViewpaneData editor_viewpane(const char* title, void* image_srv_for_imgui)
         COPY_XY(result.vp_max, max);
 
         // ImGui::GetForegroundDrawList()->AddRect(min, max, IM_COL32(0xff, 0, 0, 0xff)); 
+        ImRect aabb(min, max);
+        bool hovered, held;
+        ImGui::ButtonBehavior(aabb, ImGui::GetID("##viewpane"), &hovered, &held);
         ImGui::Image(image_srv_for_imgui, viewpane_size);
+
+        result.focused = hovered || held;
     }
     else  // if the window was not even being drawn it cant be active!
     {
@@ -408,10 +409,12 @@ VertexPosColorTexcoord uielement_to_vertex(f32 x, f32 y, f32 z, glm::vec4 color,
 void scene_render(ui::SceneDef* active_scene, 
         GfxSceneResources* resources, 
         GfxState* gfx, 
+        assets::AssetDB* assets,
         f32 frame_delta) 
 { 
     static bool success = 0;
-    static Texture2D test = assets::load_texture("w:/priscilla/resource/spr_bw_226.png", gfx->device, &success);
+
+    static Texture2D test = assets::create_texture(std::move(assets::load_image(fsapi::exe_dir().parent_path() / "resource/spr_bw_226.png")), gfx->device, &success);
     Q_ASSERT(success);
 
 
@@ -426,6 +429,13 @@ void scene_render(ui::SceneDef* active_scene,
 
         if(elem->type == ui::UIElementType::Image)
         {
+            // if needed maybe we can create the texture?
+            Texture2D* image = assets::resolve_image(assets, elem->asset_id);
+            if(image)
+            {
+                gfx_texture_bind(gfx, image);
+
+            }
             // bind the texture
             gfx_texture_bind(gfx, &test);
         }
@@ -509,7 +519,6 @@ LRESULT CALLBACK win32_message_callback(HWND hwnd,
     {
         LOG_WARNING("app invalid"); 
     } 
-
     return DefWindowProc(hwnd, msg, wparam, lparam); 
 }
 

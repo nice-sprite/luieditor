@@ -39,12 +39,14 @@ set(EXTERNAL_LIBS_DIR "${CMAKE_CURRENT_SOURCE_DIR}/external_libs")
 
 add_executable(uieditor WIN32 "src/main.cpp")
 option(TRACY_ENABLE "" ON)  
-option(TRACY_ON_DEMAND "" ON)  
+option(TRACY_ON_DEMAND  OFF)  
 add_subdirectory(external_libs/tracy)
 target_link_libraries(uieditor PUBLIC Tracy::TracyClient)
 
+
 add_subdirectory(${EXTERNAL_LIBS_DIR}/fmt-10.0.0)
 add_subdirectory(${EXTERNAL_LIBS_DIR}/imgui)
+add_subdirectory(${EXTERNAL_LIBS_DIR}/moodycamel)
 
 add_compile_definitions(
     GLM_FORCE_SWIZZLE 
@@ -60,9 +62,15 @@ set(harfbuzz_INCLUDE ${harfbuzz_DIR}/include)
 
 set(glm_DIR ${EXTERNAL_LIBS_DIR}/glm)
 
-set(ImFileDialog_DIR external_libs/ImFileDialog)
+set(ImFileDialog_DIR ${EXTERNAL_LIBS_DIR}/ImFileDialog)
 
-target_include_directories(uieditor PUBLIC ${glm_DIR} ${harfbuzz_INCLUDE} ${freetype_INCLUDE} ${EXTERNAL_LIBS_DIR})
+target_include_directories(uieditor 
+    PUBLIC 
+    ${glm_DIR} 
+    ${harfbuzz_INCLUDE} 
+    ${freetype_INCLUDE} 
+    ${EXTERNAL_LIBS_DIR})
+
 add_subdirectory(src/engine)
 add_subdirectory(src/application)
 

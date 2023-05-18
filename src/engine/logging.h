@@ -7,8 +7,15 @@
 #include <windows.h>
 #define LOG_ENABLE 1
 #define ASSERTS_ENABLE 1
+#define LOG_ODS 1
 
-enum class LogLevel : u32 { Info, Warning, Com, Fatal };
+enum class LogLevel : u32 
+{ 
+    Info,
+    Warning,
+    Com,
+    Fatal
+};
 
 template <> struct fmt::formatter<LogLevel> 
 {
@@ -17,39 +24,52 @@ template <> struct fmt::formatter<LogLevel>
         return ctx.end();
     }
 
-    template <typename FormatContext>
-    auto format(const LogLevel &loglevel, FormatContext &ctx) const -> decltype(ctx.out()) 
+    template <typename FormatContext> 
+    auto format(const LogLevel loglevel, FormatContext &ctx) const -> decltype(ctx.out()) 
     {
-        const char *level_str[] = {"INFO   ", "WARNING", "COM    ", "FATAL  "};
+        const char *level_str[] = {
+            "INFO   ",
+            "WARNING",
+            "COM    ",
+            "FATAL  "};
         return fmt::format_to(ctx.out(), "{}", level_str[(u32)loglevel]);
     }
 };
 
-static inline void
-impl_log_msg(LogLevel level, const char* file, u32 line, fmt::string_view fmt, fmt::format_args args) 
+static inline void impl_log_msg(LogLevel level,
+        const char *file,
+        u32 line,
+        fmt::string_view fmt,
+        fmt::format_args args) 
 {
-    const char *level_str[] = {"INFO   ", "WARNING", "COM    ", "FATAL  "};
-
-    fmt::print("[{}] {}:{}: {}\r\n", level, file, line, fmt::vformat(fmt, args));
-
+    std::string msg = fmt::format("[{}] {}:{}: {}\r\n", level, file, line, fmt::vformat(fmt, args));
+    fmt::print("{}", msg);
+#if LOG_ODS == 1
+    OutputDebugString(msg.c_str());
+#endif
 }
 
 template <typename S, typename... Args>
-void log_msg(LogLevel level, const char* file, u32 line, const S &format, Args &&...args) {
+void log_msg(LogLevel level,
+        const char *file,
+        u32 line,
+        const S &format,
+        Args &&...args) 
+{
     impl_log_msg(level, file, line, format, fmt::make_format_args(args...));
 }
 
-static inline void log_assert(const char *expression,
+static inline void log_assert(
+        const char *expression,
         const char *msg,
         const char *file,
-        i32 line) {
-    fmt::print("{}:{}: {}\r\n",
-            fmt::format(fmt::fg(fmt::color::orange_red), file),
-            fmt::format(fmt::fg(fmt::color::light_sky_blue), "{}", line),
-            fmt::format(fmt::fg(fmt::color::orange), expression));
+        i32 line) 
+{
+    fmt::print("{}:{}: {}\r\n", file, line, expression);
 }
 
-static inline void log_hresult(LogLevel level, HRESULT e) {
+static inline void log_hresult(LogLevel level, HRESULT e) 
+{
     _com_error ce(e);
 
     std::string error = ce.ErrorMessage();
@@ -57,7 +77,8 @@ static inline void log_hresult(LogLevel level, HRESULT e) {
 }
 
 #if LOG_ENABLE == 1
-#define LOG_INFO(fmt, ...) log_msg(LogLevel::Info, __FILE__, __LINE__, FMT_STRING(fmt), __VA_ARGS__)
+#define LOG_INFO(fmt, ...)                                                     \
+    log_msg(LogLevel::Info, __FILE__, __LINE__, FMT_STRING(fmt), __VA_ARGS__)
 #define LOG_WARNING(fmt, ...)                                                  \
     log_msg(LogLevel::Warning, __FILE__, __LINE__, FMT_STRING(fmt), __VA_ARGS__)
 #define LOG_FATAL(fmt, ...)                                                    \
@@ -74,20 +95,20 @@ static inline void log_hresult(LogLevel level, HRESULT e) {
 
 #if ASSERTS_ENABLE == 1
 #define Q_ASSERT(expr)                                                         \
-{                                                                            \
+{                                                                              \
     if (expr) {                                                                \
     } else {                                                                   \
-        log_assert(#expr, "", __FILE__, __LINE__);                               \
-        __debugbreak();                                                          \
+        log_assert(#expr, "", __FILE__, __LINE__);                             \
+        __debugbreak();                                                        \
     }                                                                          \
 }
 
 #define Q_ASSERTMSG(expr, msg)                                                 \
-{                                                                            \
+{                                                                              \
     if (expr) {                                                                \
     } else {                                                                   \
-        log_assert(#expr, msg, __FILE__, __LINE__);                              \
-        __debugbreak();                                                          \
+        log_assert(#expr, msg, __FILE__, __LINE__);                            \
+        __debugbreak();                                                        \
     }                                                                          \
 }
 #endif

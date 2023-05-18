@@ -8,7 +8,8 @@ DebugRenderSystem* g_debug_system;
 void debug_system_init(GfxState* gfx) 
 {
     g_debug_system = new DebugRenderSystem;
-    const char* debug_line_shader_path = "w:/priscilla/src/hlsl" "debug_line.hlsl";
+    fsapi::Path debug_line_shader_path = fsapi::exe_dir().parent_path() / "hlsl/debug_line.hlsl";
+    Q_ASSERT(fsapi::file_exists(debug_line_shader_path));
    // GfxShaderProgram line_shader{};
    // GfxShaderCreateParams settings{};
    // settings.shader_id = "line_shader";

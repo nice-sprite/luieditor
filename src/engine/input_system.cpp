@@ -6,6 +6,7 @@
 #include <windowsx.h>
 #include <winuser.h>
 #include <stdlib.h>
+#include "engine_memory.h"
 #define QWORD u64
 
 InputSystem input_create(HWND hwnd, b8 enable_raw_input) 

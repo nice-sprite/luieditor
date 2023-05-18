@@ -1,2 +1,4 @@
 ﻿.cache
 build
+.vscode
+bin/.vs

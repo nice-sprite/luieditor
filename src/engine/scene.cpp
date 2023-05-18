@@ -14,8 +14,8 @@
 #include <windows.h>
 #include "files.h"
 #include "imgui_custom.h"
-
 #include "imgui_internal.h"
+#include "engine_memory.h"
 
 using namespace std::string_literals;
 
@@ -26,11 +26,10 @@ GfxSceneResources scene_create_render_resource_for_scene(GfxState* gfx_state, ui
     // TODO make a "Material" def and live shader reload
     //ID3D11VertexShader* vertex_shader;
     //ID3D11PixelShader* pixel_shader;
-    const char*  quad_shader = "w:/priscilla/src/hlsl/" "TexturedQuad.hlsl";
+    fsapi::Path quad_shader = fsapi::exe_dir().parent_path() / "src/hlsl/TexturedQuad.hlsl";
     Q_ASSERT(fsapi::file_exists(quad_shader));
 
     Q_ASSERT(scene->max_element_count > 0);
-
     /* calculate allocation sizes for the gpu buffers */ 
     // TODO: check to make sure sure if these values *have* to be 16 or 64 byte aligned 
     u32 size_of_vtx_buff_in_bytes = scene->max_element_count * sizeof(VertexPosColorTexcoord) * 4; 
@@ -78,11 +77,12 @@ namespace ui
     UIElement* alloc_element(SceneDef* scene)
     {
         UIElement* elem = 0;
-
         if(scene->used_element_count < scene->max_element_count)
         {
             elem = &scene->elements[scene->used_element_count];
             scene->used_element_count += 1;
+            TracyPlot("LUI_Element_Pool_USAGE", 
+                    int64_t(scene->used_element_count * sizeof(UIElement)));
             return elem;
         }
         else
@@ -171,19 +171,20 @@ namespace ui
 
     SceneDef scene_create(u32 max_element_count)
     {
-        SceneDef scene{}; 
-        scene.max_element_count = max_element_count;
-        scene.bytes_per_element = max_element_count * sizeof(UIElement);
-        scene.indices_per_element = 6;
-        scene.used_element_count = 0;
-        scene.elements = (UIElement*)VirtualAlloc(0, scene.max_element_count * scene.bytes_per_element, MEM_COMMIT|MEM_RESERVE, PAGE_READWRITE);
+        SceneDef scene{
+            .bytes_per_element = u32(max_element_count * sizeof(UIElement)),
+            .indices_per_element = 6,
+            .used_element_count = 0,
+            .max_element_count = max_element_count,
+            .elements = (UIElement*)engine_alloc("LUI_Element_Pool", 
+                    max_element_count * sizeof(UIElement), 
+                    MEM_COMMIT|MEM_RESERVE, 
+                    PAGE_READWRITE),
+        }; 
+
         scene_create_root(&scene, "root0", 0.f, 0.f, 1920.f, 1080.f, glm::vec4{1, 1, 1,1});
 
         DEBUG_add_debug_elements(&scene);
-        //for (int i = 0; i < 25; ++i)
-        //{
-        //    scene_new_element(&scene, -500, 500, -500, 500, 1, glm::vec4(1, 1, 1, 1));
-        //}
         return scene;
     }
 
@@ -191,7 +192,7 @@ namespace ui
     {
         if(scene->elements)
         {
-            VirtualFree(scene->elements, 0, MEM_RELEASE);
+            engine_free(scene->elements, "LUI_Element_Pool" );
         } 
     }
 
@@ -320,7 +321,7 @@ namespace ui
 
                     ImGui::InputFloat_LeftLabel_Handle("rotZ", &elem->rotation_z);
                     ImGui::NextColumn();
-					ImGui::Separator(); 
+                    ImGui::Separator(); 
                 }
 
                 ImGui::Columns(1);

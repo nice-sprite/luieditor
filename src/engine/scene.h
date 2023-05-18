@@ -11,7 +11,7 @@
 #include <imgui.h>
 #include <unordered_map>
 #include <vector>
-
+#include "texture.h"
 
 // every UIQuad has
 // anchors for top left right bottom
@@ -66,12 +66,13 @@ namespace ui
     // want to try using relative pointers to make de/serialization easier?
     struct UIElement
     {
-        UIElementType type;
         UIElement* parent; // depth - 1
         UIElement* previous_sibling; // on the same level
         UIElement* next_sibling;
         UIElement* first_child; // depth + 1
         UIElement* last_child;
+        UIElementType type;
+        assets::AssetID asset_id; // if type == Image, should be a texture_id
 
         std::string name;
         UIElementBoundingBox box;

@@ -15,6 +15,7 @@ target_sources(uieditor PRIVATE
     "${CMAKE_CURRENT_SOURCE_DIR}/debug_render.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/camera_system.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/imgui_custom.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/engine_memory.cpp"
 
 )
 
